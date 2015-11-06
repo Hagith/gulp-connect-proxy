@@ -1,5 +1,6 @@
 var url    = require('url');
 var http   = require('http');
+var https  = require('https');
 var fs     = require('fs');
 var path   = require('path');
 var extend = require('extend');
@@ -7,12 +8,14 @@ var extend = require('extend');
 
 function proxyRequest (localRequest, localResponse, next) {
 
-  var options = url.parse('http://' + localRequest.url.slice(1));
+  var options = url.parse(localRequest.url);
 
-  http.request(options, function (remoteRequest) {
+  var httpLib = options.protocol === 'https:' ? https : http;
+
+  httpLib.request(options, function (remoteRequest) {
     if (remoteRequest.statusCode === 200) {
       localResponse.writeHead(200, {
-          'Content-Type': remoteRequest.headers['content-type']
+        'Content-Type': remoteRequest.headers['content-type']
       });
       remoteRequest.pipe(localResponse);
     } else {
@@ -22,7 +25,7 @@ function proxyRequest (localRequest, localResponse, next) {
   }).on('error', function(e) {
     next();
   }).end();
-};
+}
 
 function Proxy (options) {
   var config = extend({}, {
@@ -36,7 +39,7 @@ function Proxy (options) {
       throw new Error('No root specified')
     }
 
-    var pathChecks = []
+    var pathChecks = [];
     config.root.forEach(function(root, i) {
       var p = path.resolve(root)+localRequest.url;
 
